@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ホイヘンスの原理</title>
+<style>
+html, body { margin: 0; min-height: 100%; background: #faf4ee; color: #4a4038;
+  font-family: 'Hiragino Kaku Gothic ProN','Meiryo',system-ui,sans-serif; }
+main { max-width: 720px; margin: 0 auto; padding: 8vh 20px 40px; }
+h1 { font-size: clamp(24px, 4vw, 36px); margin: 0 0 8px; }
+p { margin: 0 0 32px; color: #8c8175; font-weight: 600; }
+.cards { display: grid; gap: 16px; }
+a.card { display: block; padding: 22px 24px; border-radius: 22px; background: #fffdfa; color: inherit;
+  text-decoration: none; box-shadow: 0 1px 2px rgba(90,70,50,0.16); transition: box-shadow .16s ease, transform .12s ease; }
+a.card:hover { box-shadow: 0 3px 10px rgba(90,70,50,0.22); }
+a.card:active { transform: translateY(1px); }
+.card b { display: block; font-size: clamp(18px, 2.6vw, 24px); margin-bottom: 6px; }
+.card span { color: #8c8175; font-weight: 600; font-size: 14px; }
+.card.r b { color: #e00000; } .card.k b { color: #0060d0; }
+</style>
+</head>
+<body>
+<main>
+  <h1>ホイヘンスの原理</h1>
+  <p>素元波で、反射の法則・屈折の法則を確かめよう</p>
+  <div class="cards">
+    <a class="card r" href="hansha.html"><b>反射の法則</b><span>自由端反射・固定端反射／素元波・波面を残す・三角形</span></a>
+    <a class="card k" href="kussetsu.html"><b>屈折の法則</b><span>遅い媒質へ・速い媒質へ（全反射）／素元波・波面を残す・三角形</span></a>
+  </div>
+</main>
+</body>
+</html>

@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>屈折の法則</title>
+<style>
+* { -webkit-user-select: none; user-select: none; -webkit-appearance: none; }
+html, body { margin: 0; padding: 0; overflow: hidden; width: 100%; height: 100%; background-color: #faf4ee;
+  font-family: 'Hiragino Kaku Gothic ProN','Meiryo',system-ui,sans-serif; }
+button, html, body { touch-action: manipulation; }
+canvas#cv { display: block; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background-color: #faf4ee; touch-action: none; }
+
+#info, #info2 {
+  position: fixed; left: 0; width: 100%; box-sizing: border-box;
+  display: flex; flex-wrap: wrap; justify-content: center; align-items: center;
+  gap: 8px 14px; padding: 0 12px; color: #4a4038;
+}
+#info  { bottom: 9vh; }
+#info2 { bottom: 2vh; }
+
+/* 関連するボタンをひとまとまりに見せる */
+.grp { display: inline-flex; gap: 6px; padding: 4px 5px; background: rgba(74,64,56,0.07);
+  border-radius: 999px; align-items: center; }
+.lbl { font-size: clamp(11px, 1.32vw, 20px); font-weight: 600; padding: 0 2px 0 8px; white-space: nowrap; }
+
+button {
+  appearance: none; -webkit-appearance: none; padding: 0.36em 0.95em; border: 0; border-radius: 999px;
+  background: #fffdfa; color: #4a4038; font-family: inherit; font-size: clamp(11px, 1.32vw, 20px);
+  font-weight: 600; letter-spacing: 0.02em; line-height: 1.15; white-space: nowrap; cursor: pointer;
+  box-shadow: 0 1px 2px rgba(90,70,50,0.16);
+  transition: background-color .16s ease, color .16s ease, box-shadow .16s ease, transform .12s ease;
+}
+button:hover  { background: #ffffff; box-shadow: 0 3px 8px rgba(90,70,50,0.22); }
+button:active { transform: translateY(1px); box-shadow: 0 1px 2px rgba(90,70,50,0.18); }
+button.on { background: #3f362e; color: #fff8f0; box-shadow: 0 3px 10px rgba(63,54,46,0.34); }
+button.on:hover { background: #4a4038; }
+</style>
+</head>
+<body>
+
+<canvas id="cv"></canvas>
+
+<div id="info">
+  <span class="grp" id="modes"></span>
+  <span class="grp">
+    <span class="lbl">入射角</span>
+    <button id="angDown">小</button>
+    <button id="angUp">大</button>
+  </span>
+  <span class="grp">
+    <span class="lbl">進行方向</span>
+    <button id="raysOn">表示</button>
+    <button id="raysOff">消去</button>
+  </span>
+  <span class="grp">
+    <button id="huygens">素元波</button>
+    <button id="keep">波面を残す</button>
+    <button id="tri">三角形</button>
+  </span>
+  <button id="back">戻る</button>
+</div>
+
+<div id="info2">
+  <span class="grp">
+    <button id="pause">停止／再開</button>
+    <button id="faster">描画↑</button>
+    <button id="slower">描画↓</button>
+  </span>
+</div>
+
+<script>
+window.SIM_CONFIG = {
+  boundaryOffset: 0,
+  theta0: Math.PI / 6,
+  v0: 1.5,
+  modes: [
+    { label: "屈折なし", type: "none" },
+    { label: "屈折１", type: "refract", n: 1.4142, shade: "upper", color: "#e00000" },
+    { label: "屈折２", type: "refract", n: 0.8165, shade: "lower", color: "#00a000" }
+  ]
+};
+</script>
+<script src="common.js"></script>
+</body>
+</html>
