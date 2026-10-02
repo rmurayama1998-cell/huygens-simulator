@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>素元波（平面波・球面波）</title>
+<style>
+* { -webkit-user-select: none; user-select: none; -webkit-appearance: none; }
+html, body { margin: 0; padding: 0; overflow: hidden; width: 100%; height: 100%; background-color: #faf4ee;
+  font-family: 'Hiragino Kaku Gothic ProN','Meiryo',system-ui,sans-serif; }
+button, html, body { touch-action: manipulation; }
+canvas#cv { display: block; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background-color: #faf4ee; touch-action: none; }
+
+#info, #info2 {
+  position: fixed; left: 0; width: 100%; box-sizing: border-box;
+  display: flex; flex-wrap: wrap; justify-content: center; align-items: center;
+  gap: 8px 14px; padding: 0 12px; color: #4a4038;
+}
+#info  { bottom: 9vh; }
+#info2 { bottom: 2vh; }
+
+/* 関連するボタンをひとまとまりに見せる */
+.grp { display: inline-flex; gap: 6px; padding: 4px 5px; background: rgba(74,64,56,0.07);
+  border-radius: 999px; align-items: center; }
+.lbl { font-size: clamp(11px, 1.32vw, 20px); font-weight: 600; padding: 0 2px 0 8px; white-space: nowrap; }
+.num { font-size: clamp(11px, 1.32vw, 20px); font-weight: 600; min-width: 1.6em; text-align: center; }
+
+button {
+  appearance: none; -webkit-appearance: none; padding: 0.36em 0.95em; border: 0; border-radius: 999px;
+  background: #fffdfa; color: #4a4038; font-family: inherit; font-size: clamp(11px, 1.32vw, 20px);
+  font-weight: 600; letter-spacing: 0.02em; line-height: 1.15; white-space: nowrap; cursor: pointer;
+  box-shadow: 0 1px 2px rgba(90,70,50,0.16);
+  transition: background-color .16s ease, color .16s ease, box-shadow .16s ease, transform .12s ease;
+}
+button:hover  { background: #ffffff; box-shadow: 0 3px 8px rgba(90,70,50,0.22); }
+button:active { transform: translateY(1px); box-shadow: 0 1px 2px rgba(90,70,50,0.18); }
+button.on { background: #3f362e; color: #fff8f0; box-shadow: 0 3px 10px rgba(63,54,46,0.34); }
+button.on:hover { background: #4a4038; }
+</style>
+</head>
+<body>
+
+<canvas id="cv"></canvas>
+
+<div id="info">
+  <span class="grp">
+    <button id="mPlane">平面波</button>
+    <button id="mSphere">球面波</button>
+  </span>
+  <span class="grp">
+    <span class="lbl">素元波の数</span>
+    <button id="nDown">−</button>
+    <span class="num" id="nVal"></span>
+    <button id="nUp">＋</button>
+  </span>
+  <span class="grp">
+    <span class="lbl">包絡線</span>
+    <button id="envOn">表示</button>
+    <button id="envOff">消去</button>
+  </span>
+  <span class="grp">
+    <span class="lbl">波面の跡</span>
+    <button id="trOn">表示</button>
+    <button id="trOff">消去</button>
+  </span>
+  <button id="back">戻る</button>
+</div>
+
+<div id="info2">
+  <span class="grp">
+    <button id="play">再生／停止</button>
+    <button id="step">1ステップ</button>
+    <button id="reset">はじめから</button>
+  </span>
+  <span class="grp">
+    <button id="faster">描画↑</button>
+    <button id="slower">描画↓</button>
+  </span>
+</div>
+
+<script>
+"use strict";
+/* ============================================================
+   素元波（ホイヘンスの原理）
+     いまの波面（青）の上の各点から、素元波（赤紫の点線）が広がる。
+     素元波に共通に接する線＝包絡線（赤）が、少し後の新しい波面になる。
+     新しい波面ができたら、それを次の波面としてくり返す。
+       平面波 … 波面は直線。包絡線も直線になり、まっすぐ進む。
+       球面波 … 波面は波源 S を中心とする円。包絡線も同心円になる。
+   画面の高さ 768 を基準に拡大する（反射・屈折のページと同じ）
+   ============================================================ */
+
+const cv = document.getElementById("cv");
+const ctx = cv.getContext("2d");
+
+const C = {
+  bg: "#faf4ee",
+  ink: "#4a4038",
+  sub: "#8c8175",
+  front: "#0060d0",       // いまの波面
+  wavelet: "#c2185b",     // 素元波
+  envelope: "#e00000",    // 包絡線（新しい波面）
+  trace: "rgba(0,96,208,0.28)",  // これまでの波面
+};
+const FONT = "'Hiragino Kaku Gothic ProN','Meiryo',system-ui,sans-serif";
+const N_LIST = [3, 5, 7, 9, 13, 17, 25];
+const HOLD = 0.7;          // 包絡線ができてから次へ進むまでの間 [s]
+
+let W = 0, H = 0, dpr = 1, k = 1;
+let mode = "plane";
+let nIdx = 3;
+let showEnv = true, showTrace = true;
+let running = true, stepOnce = false;
+let speed = 1;             // 描画の速さの倍率
+let front = 0;             // 平面波: 波面の x 座標 / 球面波: 波面の半径
+let r = 0;                 // いまの素元波の半径
+let hold = 0;
+let traces = [];           // これまでの波面
+
+function resize() {
+  dpr = window.devicePixelRatio || 1;
+  W = window.innerWidth; H = window.innerHeight;
+  cv.width = W * dpr; cv.height = H * dpr;
+  k = H / 768;
+}
+// 画面の大きさが変わったら、図の位置も同じ割合で拡大・縮小する
+window.addEventListener("resize", () => {
+  const k0 = k, cx0 = W / 2;
+  resize();
+  const f = k / k0;
+  if (mode === "plane") {
+    // 平面波は左端からの位置で合わせる
+    front *= W / (cx0 * 2) || 1; traces = traces.map(t => t * (W / (cx0 * 2) || 1));
+  } else {
+    front *= f; traces = traces.map(t => t * f);
+  }
+  r *= f;
+});
+resize();
+
+// 図を描く範囲（下はボタン）
+const area = () => ({ top: 80 * k, bottom: H * 0.8 });
+const D = () => 64 * k;                 // 1ステップで素元波が広がる距離
+const source = () => {                 // 球面波の波源
+  const a = area();
+  return { x: W / 2, y: (a.top + a.bottom) / 2 };
+};
+const startFront = () => mode === "plane" ? Math.max(60 * k, W * 0.12) : 40 * k;
+const endFront = () => {
+  if (mode === "plane") return W - 60 * k - D();
+  const a = area(), s = source();
+  return Math.min(s.y - a.top, a.bottom - s.y, W / 2) + 2 * D();
+};
+
+function restart() {
+  front = startFront(); r = 0; hold = 0; traces = [];
+}
+
+// いまの波面上の点（素元波の中心）と、各点の「前向き」の向き
+function points() {
+  const n = N_LIST[nIdx], pts = [];
+  if (mode === "plane") {
+    const a = area(), m = 30 * k;
+    for (let i = 0; i < n; i++) {
+      const y = a.top + m + (a.bottom - a.top - 2 * m) * (n === 1 ? 0.5 : i / (n - 1));
+      pts.push({ x: front, y, dir: 0 });
+    }
+  } else {
+    const s = source();
+    const m = Math.max(n, 6) * 2;      // 球面波は円周に沿って多めに置く
+    for (let i = 0; i < m; i++) {
+      const ph = -Math.PI / 2 + 2 * Math.PI * i / m;
+      pts.push({ x: s.x + front * Math.cos(ph), y: s.y + front * Math.sin(ph), dir: ph });
+    }
+  }
+  return pts;
+}
+
+// 波面（直線または円）を描く
+function drawFront(pos, color, width, dash) {
+  ctx.strokeStyle = color; ctx.lineWidth = width; ctx.setLineDash(dash || []);
+  ctx.beginPath();
+  if (mode === "plane") {
+    const a = area(), m = 30 * k;
+    ctx.moveTo(pos, a.top + m); ctx.lineTo(pos, a.bottom - m);
+  } else {
+    const s = source();
+    ctx.arc(s.x, s.y, pos, 0, Math.PI * 2);
+  }
+  ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+function draw() {
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.fillStyle = C.bg;
+  ctx.fillRect(0, 0, W, H);
+
+  const pts = points();
+  const lw = Math.max(3, 5 * k);
+
+  // これまでの波面
+  if (showTrace) for (const t of traces) drawFront(t, C.trace, Math.max(2, 3 * k));
+
+  // 素元波（進む向きの半円）
+  if (r > 0) {
+    ctx.strokeStyle = C.wavelet; ctx.lineWidth = Math.max(1.5, 2 * k);
+    ctx.setLineDash([7 * k, 5 * k]);
+    for (const p of pts) {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, r, p.dir - Math.PI / 2, p.dir + Math.PI / 2);
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
+  }
+
+  // 包絡線（新しい波面）
+  if (showEnv && r > 0) {
+    if (mode === "plane") {
+      // 素元波の先端どうしを結ぶ直線
+      drawFront(front + r, C.envelope, lw);
+    } else {
+      drawFront(front + r, C.envelope, lw);
+    }
+  }
+
+  // いまの波面と、素元波を出す点
+  drawFront(front, C.front, lw);
+  ctx.fillStyle = C.wavelet;
+  for (const p of pts) {
+    ctx.beginPath(); ctx.arc(p.x, p.y, Math.max(3, 5 * k), 0, Math.PI * 2); ctx.fill();
+  }
+
+  // 波源
+  if (mode === "sphere") {
+    const s = source();
+    ctx.fillStyle = C.ink;
+    ctx.beginPath(); ctx.arc(s.x, s.y, Math.max(4, 6 * k), 0, Math.PI * 2); ctx.fill();
+    label("S", s.x + 14 * k, s.y - 14 * k, C.ink);
+  }
+
+  drawLegend();
+}
+
+function label(text, x, y, color) {
+  ctx.font = `600 ${Math.round(Math.max(13, 22 * k))}px ${FONT}`;
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillStyle = color;
+  ctx.fillText(text, x, y);
+}
+
+// 左上の凡例（線の見本＋ことば）
+function drawLegend() {
+  const fs = Math.round(Math.max(12, 18 * k));
+  ctx.font = `600 ${fs}px ${FONT}`;
+  ctx.textAlign = "left"; ctx.textBaseline = "middle";
+  const items = [
+    [C.front, [], "いまの波面"],
+    [C.wavelet, [7, 5], "素元波"],
+    [C.envelope, [], "包絡線（新しい波面）"],
+  ];
+  let x = 16 * k;
+  const y = 22 * k, L = 30 * k;
+  for (const [col, dash, text] of items) {
+    ctx.strokeStyle = col; ctx.lineWidth = Math.max(2, 4 * k);
+    ctx.setLineDash(dash.map(v => v * k));
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + L, y); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = C.ink;
+    ctx.fillText(text, x + L + 8 * k, y);
+    x += L + 8 * k + ctx.measureText(text).width + 24 * k;
+  }
+}
+
+// 時間を dt 秒進める
+function advance(dt) {
+  if (r < D()) {
+    r = Math.min(D(), r + 60 * k * speed * dt);
+    return;
+  }
+  hold += dt * speed;
+  if (hold < HOLD) return;
+  // 包絡線を新しい波面にして、次のステップへ
+  traces.push(front);
+  front += D(); r = 0; hold = 0;
+  if (stepOnce) { stepOnce = false; running = false; markOn(); }
+  if (front > endFront()) restart();
+}
+
+let last = performance.now();
+function loop(now) {
+  const dt = Math.min(0.1, (now - last) / 1000);
+  last = now;
+  if (running) advance(dt);
+  draw();
+  requestAnimationFrame(loop);
+}
+
+// ---- ボタン ----
+const $ = id => document.getElementById(id);
+function markOn() {
+  $("mPlane").classList.toggle("on", mode === "plane");
+  $("mSphere").classList.toggle("on", mode === "sphere");
+  $("envOn").classList.toggle("on", showEnv);
+  $("envOff").classList.toggle("on", !showEnv);
+  $("trOn").classList.toggle("on", showTrace);
+  $("trOff").classList.toggle("on", !showTrace);
+  $("play").classList.toggle("on", running && !stepOnce);
+  $("nVal").textContent = points().length;
+}
+$("mPlane").onclick = () => { mode = "plane"; restart(); markOn(); };
+$("mSphere").onclick = () => { mode = "sphere"; restart(); markOn(); };
+$("nDown").onclick = () => { nIdx = Math.max(0, nIdx - 1); markOn(); };
+$("nUp").onclick = () => { nIdx = Math.min(N_LIST.length - 1, nIdx + 1); markOn(); };
+$("envOn").onclick = () => { showEnv = true; markOn(); };
+$("envOff").onclick = () => { showEnv = false; markOn(); };
+$("trOn").onclick = () => { showTrace = true; markOn(); };
+$("trOff").onclick = () => { showTrace = false; markOn(); };
+$("play").onclick = () => { running = !running; stepOnce = false; markOn(); };
+// 1ステップ: 素元波が広がって包絡線ができ、次の波面になるところまで進めて止まる
+$("step").onclick = () => { running = true; stepOnce = true; markOn(); };
+$("reset").onclick = () => { restart(); };
+$("faster").onclick = () => { speed = Math.min(4, speed * 1.4); };
+$("slower").onclick = () => { speed = Math.max(0.2, speed / 1.4); };
+$("back").onclick = () => { location.href = "index.html"; };
+
+// 確認用: 時間を sec 秒ぶん進めて描く
+window.simStep = sec => { for (let t = 0; t < sec; t += 0.05) advance(0.05); draw(); };
+
+restart();
+markOn();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
