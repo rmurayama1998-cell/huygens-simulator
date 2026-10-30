@@ -7,6 +7,7 @@ TARGETS = {
     "qr": BASE,                        # トップページ
     "qr-hansha": BASE + "hansha.html",  # 反射の法則
     "qr-kussetsu": BASE + "kussetsu.html",  # 屈折の法則
+    "qr-wavelet": BASE + "wavelet.html",  # 素元波（平面波・球面波）
 }
 
 for name, url in TARGETS.items():

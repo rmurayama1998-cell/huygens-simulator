@@ -5,6 +5,7 @@
 - 公開ページ: https://rmurayama1998-cell.github.io/huygens-simulator/
 - `hansha.html` … 反射の法則（反射なし／自由端反射／固定端反射）
 - `kussetsu.html` … 屈折の法則（屈折なし／屈折１／屈折２）
+- `wavelet.html` … 素元波（平面波・球面波）。波面上の各点から素元波が広がり、包絡線が新しい波面になる
 - `common.js` … 両ページ共通の描画プログラム
 
 ## ボタン
