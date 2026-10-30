@@ -24,6 +24,8 @@
   const FONT = "'Hiragino Kaku Gothic ProN','Meiryo',system-ui,sans-serif";
   const TICK = 0.05;                 // 更新間隔 50ms 相当
   const THETA_MAX = Math.PI / 3;
+  // 図の中の文字。投影しても読めるよう画面の高さの約6%(パワポ32pt相当)
+  const FS = () => Math.round(Math.max(22, 46 * ky));
 
   let W = 0, H = 0, dpr = 1, kx = 1, ky = 1;
   let theta1 = cfg.theta0;
@@ -314,7 +316,7 @@
     while (da <= -Math.PI) da += 2 * Math.PI;
     ctx.strokeStyle = color; ctx.lineWidth = Math.max(1.5, 2.5 * ky);
     ctx.beginPath(); ctx.arc(P[0], P[1], r, a0, a0 + da, da < 0); ctx.stroke();
-    const am = a0 + da / 2, rl = r + 16 * ky;
+    const am = a0 + da / 2, rl = r + 34 * ky;
     label(name, P[0] + Math.cos(am) * rl, P[1] + Math.sin(am) * rl, color);
   }
   // 辺 PQ の外側(三角形の重心と反対側)に名前を書く
@@ -322,12 +324,15 @@
     const mx = (P[0] + Q[0]) / 2, my = (P[1] + Q[1]) / 2;
     const gx = (tri[0][0] + tri[1][0] + tri[2][0]) / 3, gy = (tri[0][1] + tri[1][1] + tri[2][1]) / 3;
     const [ox, oy] = unit([gx, gy], [mx, my]);
-    const off = 20 * ky;
+    const off = 38 * ky;
     label(name, mx + ox * off, my + oy * off, color);
   }
   function label(text, x, y, color) {
-    ctx.font = `600 ${Math.round(Math.max(13, 22 * ky))}px ${FONT}`;
+    ctx.font = `700 ${FS()}px ${FONT}`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    // 線や波面の上でも読めるよう、背景色のふちどりをつける
+    ctx.lineJoin = 'round'; ctx.lineWidth = 8 * ky; ctx.strokeStyle = C.bg;
+    ctx.strokeText(text, x, y);
     ctx.fillStyle = color;
     ctx.fillText(text, x, y);
     ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
@@ -339,13 +344,9 @@
     ctx.beginPath(); ctx.moveTo(P[0], P[1]); ctx.lineTo(Q[0], Q[1]); ctx.stroke();
     const L = Math.hypot(Q[0] - P[0], Q[1] - P[1]) || 1;
     const ux = (Q[0] - P[0]) / L, uy = (Q[1] - P[1]) / L;
-    const off = 22 * ky;
-    ctx.font = `600 ${Math.round(Math.max(13, 22 * ky))}px ${FONT}`;
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillStyle = color;
-    ctx.fillText(nameP, P[0] - ux * off, P[1] - uy * off);
-    ctx.fillText(nameQ, Q[0] + ux * off, Q[1] + uy * off);
-    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    const off = 40 * ky;
+    label(nameP, P[0] - ux * off, P[1] - uy * off, color);
+    label(nameQ, Q[0] + ux * off, Q[1] + uy * off, color);
   }
 
   // 作図をはじめからやり直す(残した波面も消す)
