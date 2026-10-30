@@ -140,17 +140,18 @@ window.addEventListener("resize", () => {
 resize();
 
 // 図を描く範囲（下はボタン）
-const area = () => ({ top: 80 * k, bottom: H * 0.8 });
+const area = () => ({ top: 100 * k, bottom: H * 0.8 });
 const D = () => 64 * k;                 // 1ステップで素元波が広がる距離
 const source = () => {                 // 球面波の波源
   const a = area();
   return { x: W / 2, y: (a.top + a.bottom) / 2 };
 };
-const startFront = () => mode === "plane" ? Math.max(60 * k, W * 0.12) : 40 * k;
+const startFront = () => mode === "plane" ? Math.max(60 * k, W * 0.12) : D();
 const endFront = () => {
   if (mode === "plane") return W - 60 * k - D();
   const a = area(), s = source();
-  return Math.min(s.y - a.top, a.bottom - s.y, W / 2) + 2 * D();
+  // 包絡線（半径 front + D）が凡例やボタンに重ならないところまで
+  return Math.min(s.y - a.top, a.bottom - s.y, W / 2) - D();
 };
 
 function restart() {
@@ -217,11 +218,13 @@ function draw() {
 
   // 包絡線（新しい波面）
   if (showEnv && r > 0) {
-    if (mode === "plane") {
-      // 素元波の先端どうしを結ぶ直線
-      drawFront(front + r, C.envelope, lw);
-    } else {
-      drawFront(front + r, C.envelope, lw);
+    drawFront(front + r, C.envelope, lw);
+    // 素元波が包絡線に接する点
+    ctx.fillStyle = C.envelope;
+    for (const p of pts) {
+      ctx.beginPath();
+      ctx.arc(p.x + r * Math.cos(p.dir), p.y + r * Math.sin(p.dir), Math.max(3, 5 * k), 0, Math.PI * 2);
+      ctx.fill();
     }
   }
 
@@ -237,31 +240,31 @@ function draw() {
     const s = source();
     ctx.fillStyle = C.ink;
     ctx.beginPath(); ctx.arc(s.x, s.y, Math.max(4, 6 * k), 0, Math.PI * 2); ctx.fill();
-    label("S", s.x + 14 * k, s.y - 14 * k, C.ink);
+    label("S", s.x - 22 * k, s.y - 22 * k, C.ink);
   }
 
   drawLegend();
 }
 
 function label(text, x, y, color) {
-  ctx.font = `600 ${Math.round(Math.max(13, 22 * k))}px ${FONT}`;
+  ctx.font = `700 ${Math.round(Math.max(22, 46 * k))}px ${FONT}`;
   ctx.textAlign = "center"; ctx.textBaseline = "middle";
   ctx.fillStyle = color;
   ctx.fillText(text, x, y);
 }
 
-// 左上の凡例（線の見本＋ことば）
+// 左上の凡例（線の見本＋ことば）。投影しても読めるよう画面の高さの約6%
 function drawLegend() {
-  const fs = Math.round(Math.max(12, 18 * k));
-  ctx.font = `600 ${fs}px ${FONT}`;
+  const fs = Math.round(Math.max(20, 46 * k));
+  ctx.font = `700 ${fs}px ${FONT}`;
   ctx.textAlign = "left"; ctx.textBaseline = "middle";
   const items = [
     [C.front, [], "いまの波面"],
     [C.wavelet, [7, 5], "素元波"],
-    [C.envelope, [], "包絡線（新しい波面）"],
+    [C.envelope, [], "包絡線＝新しい波面"],
   ];
   let x = 16 * k;
-  const y = 22 * k, L = 30 * k;
+  const y = 40 * k, L = 30 * k;
   for (const [col, dash, text] of items) {
     ctx.strokeStyle = col; ctx.lineWidth = Math.max(2, 4 * k);
     ctx.setLineDash(dash.map(v => v * k));
@@ -269,7 +272,7 @@ function drawLegend() {
     ctx.setLineDash([]);
     ctx.fillStyle = C.ink;
     ctx.fillText(text, x + L + 8 * k, y);
-    x += L + 8 * k + ctx.measureText(text).width + 24 * k;
+    x += L + 8 * k + ctx.measureText(text).width + 28 * k;
   }
 }
 
